@@ -13,7 +13,6 @@ boolean explore = true;
 boolean updatedOnThisRun = false;
 
 void setup(){
-  delay(5000); //give us some time to put the bot in the maze
   Serial.begin(9600);
   Serial.println("**************************");
   motors.printBoolStatus();
