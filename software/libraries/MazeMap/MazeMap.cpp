@@ -1,6 +1,5 @@
-#include "MazeMap.h"
+#include "map.h"
 
-//delete all walls and set perimeter to walls
 MazeMap::MazeMap() {
   for (int x = 0; x < MAZE_SIZE; x++) {
     for (int y = 1; y < MAZE_SIZE; y++) {
@@ -16,33 +15,32 @@ MazeMap::MazeMap() {
     wallsEW[0][y] = true;
     wallsEW[MAZE_SIZE][y] = true;
   }
-  for (int x = 0; x < MAZE_SIZE; x++) {
-	  for (int y = 0; y < MAZE_SIZE; y++){
-		  breadCrumbs[x][y] = false;
-	  }
-  }
 }
 
-//curPosition wall to close
-void MazeMap::closeWall(short x, short y, byte direction) {
+boolean MazeMap::closeWall(int x, int y, int direction) {
+  boolean updated = false;
   switch (direction) {
     case NORTH:
+      updated = !wallsNS[x][y];
       wallsNS[x][y] = true;
       break;
     case SOUTH:
+      updated = !wallsNS[x][y + 1];
       wallsNS[x][y + 1] = true;
       break;
     case EAST:
+      updated = !wallsEW[x + 1][y];
       wallsEW[x + 1][y] = true;
       break;
     case WEST:
+      updated = !wallsEW[x][y];
       wallsEW[x][y] = true;
       break;
   }
+  return updated;
 }
 
-//get state of walls
-boolean MazeMap::wallPresent(short x, short y, byte direction) {
+boolean MazeMap::wallPresent(int x, int y, int direction) {
   switch (direction) {
     case NORTH:
       return wallsNS[x][y];
@@ -60,7 +58,7 @@ boolean MazeMap::wallPresent(short x, short y, byte direction) {
   return true;
 }
 
-byte MazeMap::bestDirection(short x, short y) {
+byte MazeMap::bestDirection(int x, int y) {
   int n = y > 0 ? distances[x][y - 1] : 100;
   int s = y < MAZE_SIZE - 1 ? distances[x][y + 1] : 100;
   int w = x > 0 ? distances[x - 1][y] : 100;
@@ -72,14 +70,14 @@ byte MazeMap::bestDirection(short x, short y) {
   return WEST;
 }
 
-boolean MazeMap::isTarget(short x, short y, byte targetType) {
+boolean MazeMap::isTarget(int x, int y, int targetType) {
   if (targetType == HOME)
     return x == 0 && y == 0;
   else
     return (x == HALF_SIZE || x == HALF_SIZE - 1) && (y == HALF_SIZE || y == HALF_SIZE - 1);
 }
 
-void MazeMap::solve(byte targetType) {
+void MazeMap::solve(int targetType) {
   if (targetType == HOME) {
     distances[0][0] = 0;
   } else {
@@ -110,35 +108,34 @@ void MazeMap::solve(byte targetType) {
   Serial.println(message);
 }
 
-String MazeMap::bestPath(short startX, short startY, byte targetType) {
+String MazeMap::bestPath(int startX, int startY, int targetType) {
   int x = startX;
   int y = startY;
   solve(targetType);
-  String path = "";
+  int pathIndex = 0;
   while (!isTarget(x, y, targetType)) {
     byte nextDir = bestDirection(x, y);
+    path[pathIndex++] = nextDir;
     switch (nextDir) {
       case NORTH:
-        path = path + "N";
-        y--;
+        y--;        
         break;
       case SOUTH:
-        path = path + "S";
         y++;
         break;
       case EAST:
-        path = path + "E";
         x++;
         break;
       case WEST:
-        path = path + "W";
         x--;
         break;
     }
   }
+  path[pathIndex] = 255;
+  return path;
 }
 
-boolean MazeMap::updateDistances(short x, short y) {
+boolean MazeMap::updateDistances(int x, int y) {
   int startDistance = distances[x][y];
   if (startDistance > 0) {
     int n = y > 0 ? (wallPresent(x, y, NORTH) ? 100 : distances[x][y - 1]) : 100;
@@ -215,12 +212,3 @@ void MazeMap::print() {
   }
 }
 
-void MazeMap::visit(short x, short y) {
-	breadCrumbs[x][y] = true;
-}
-boolean MazeMap::visited(short x, short y) {
-	return breadCrumbs[x][y];
-}
-void MazeMap::unvisit(short x, short y) {
-	breadCrumbs[x][y] = false;
-}

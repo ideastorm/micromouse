@@ -3,25 +3,23 @@
 #include "arduino.h"
 
 /*
- * Class to represent a micromouse maze.  As you navigate the maze, you'll need to detect whether
- * walls are present, and use the closeWall method to record them.
+ * Class to represent a micromouse maze.  As you navigate the maze, you'll need to detect whether walls are present, and use the closeWall method to record them.
  * After you've closed walls, use the solve method to recalculate the distances to the target.
  * Use the bestDirection method to determine the next direction to go to follow the shortest known path to the target.
  * Unexplored areas will generally be considered closer, unless there's a nearly straight shot from the start to the destination.
  */
 
 //Direction flags.  The starting space is represented by the northwest (top left) corner of the maze.
-const byte NORTH = 1;
-const byte SOUTH = 2;
-const byte EAST  = 4;
-const byte WEST  = 8;
+const int NORTH = 1;
+const int EAST  = 2;
+const int SOUTH = 3;
+const int WEST  = 4;
 
-//Solve targets.  Target DESTINATION when searching for the center,
-//target HOME when returning to the start square
-const byte HOME = 0;
-const byte DESTINATION = 1;
+//Solve targets.  Target CENTER when searching for the center, target HOME when returning to the start square
+const int HOME = 0;
+const int CENTER = 1;
 
-#define MAZE_SIZE 6
+#define MAZE_SIZE 8
 const int HALF_SIZE = MAZE_SIZE / 2;
 
 
@@ -34,24 +32,20 @@ class MazeMap
 {
   public:
     MazeMap();
-    void closeWall(short x, short y, byte direction);
-    byte bestDirection(short x, short y);
-    boolean isTarget(short x, short y, byte targetType);
-    void solve(byte targetType);
+    boolean closeWall(int x, int y, int direction); //returns true if an update was made
+    byte bestDirection(int x, int y);
+    boolean isTarget(int x, int y, int targetType);
+    void solve(int targetType);
     void print();
-    String bestPath(short startX, short startY, byte targetType);
-	void visit(short x, short y);
-	boolean visited(short x, short y);
-	void unvisit(short x, short y);
-	boolean wallPresent(short x, short y, byte direction);
-
+    byte[] bestPath(int startX, int startY, int targetType);
   private:
     boolean wallsNS[MAZE_SIZE][MAZE_SIZE + 1];
     boolean wallsEW[MAZE_SIZE + 1][MAZE_SIZE];
-	boolean breadCrumbs[MAZE_SIZE][MAZE_SIZE];
     byte distances[MAZE_SIZE][MAZE_SIZE];
+    byte path[MAZE_SIZE * MAZE_SIZE - 7]; //maximum path length for a valid maze
+    boolean wallPresent(int x, int y, int direction);
     void resetDistances();
-    boolean updateDistances(short x, short y);
+    boolean updateDistances(int x, int y);
 };
 
 #endif

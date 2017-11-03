@@ -1,270 +1,116 @@
-#include <AccelStepper.h>
+#include <AccelStepperInt.h>
 #include <MultiStepper.h>
-#include <StackArray.h>
-#include <MemoryFree.h>
 #include "StepperShield.h"
 #include "MazeMap.h"
 
 StepperShield motors;
 MazeMap maze;
-byte curDirection = NORTH;
+byte currentDirection = SOUTH; //Bot should be placed such that the back and right sides of the bot face the outside walls
+byte currentX = 0;
+byte currentY = 0; //start in "northwest" corner
+byte currentTarget = CENTER;
+boolean explore = true;
+boolean updatedOnThisRun = false;
 
-struct Position{
-  byte direction;
-  short x;
-  short y;
-};
 void setup(){
   Serial.begin(9600);
   Serial.println("**************************");
   motors.printBoolStatus();
-
-}
-
-
-void randomSearch(){
-
-  while(1){
-    motors.updateSensors();
-    motors.printBoolStatus();
-
-    //ifBack only option turn around and go back one
-    if(motors.front && motors.left && motors.right){
-      motors.moveBackOne();
-      motors.rotate90right();
-      motors.rotate90right();
-    }
-    else{
-      switch (random(3)) {
-        case 0:
-          if(!motors.front){
-            motors.moveForwardOne();
-          }
-          break;
-        case 1:
-          if(!motors.left){
-            motors.rotate90left();
-            motors.moveForwardOne();
-          }
-          break;
-        case 2:
-          if(!motors.right){
-            motors.rotate90right();
-            motors.moveForwardOne();
-          }
-      }
-    }
-  }
-}
-
-
-int incrementHeading(byte dir){
-  motors.printBoolStatus();
-
-  switch(dir){
-    case NORTH:
-      return EAST;
-    case EAST:
-      return SOUTH;
-    case SOUTH:
-      return WEST;
-    case WEST:
-      return NORTH;
-    }
-    return 0;
 }
 
 void setDirection(byte direction){
+  //Directions: N1,E2,S3,W4
   motors.printBoolStatus();
-
-  //line up direction
-  while(direction != curDirection){
-    motors.rotate90right();
-    curDirection = incrementHeading(curDirection);
+  if (direction != currentDirection) {
+    if ((4 + direction - currentDirection)%4 == 1) { 
+      motors.rotate90right();
+    } else if ((4 + direction - currentDirection)%4 == 3) {
+      motors.rotate90left();
+    } else if ((4 + direction - currentDirection)%4 == 2) {
+      motors.rotate90right();
+      motors.rotate90right();
+    }
+    currentDirection = direction;  
   }
 }
 
-void moveRobot(byte direction){
-  motors.printBoolStatus();
-
-    setDirection(direction);
-    motors.moveForwardOne();
+byte frontDirection() {
+  return currentDirection;
 }
 
-void updatemaze(short x,short y){
-  motors.printBoolStatus();
+byte rightDirection() {
+  return (currentDirection + 1) % 4;
+}
 
-  setDirection(NORTH);
+byte rearDirection() {
+  return (currentDirection + 2) % 4;
+}
+
+byte leftDirection() {
+  return (currentDirection + 3) % 4;
+}
+
+boolean updateMaze(){
   motors.updateSensors();
   motors.printBoolStatus();
+  boolean updated = false;
   if(motors.front){
-    Serial.println("closing north");
-    maze.closeWall(x,y,NORTH);
+    Serial.println("closing front");
+    updated |= maze.closeWall(currentX,currentY,frontDirection());    
   }
   if(motors.left){
-    Serial.println("closing WEST");
-    maze.closeWall(x,y,WEST);
+    Serial.println("closing left");
+    updated |= maze.closeWall(currentX,currentY,leftDirection());
   }
   if(motors.right){
-    Serial.println("closing EAST");
-
-    maze.closeWall(x,y,EAST);
+    Serial.println("closing right");
+    updated |= maze.closeWall(currentX,currentY,rightDirection());
   }
   if(motors.back){
-    Serial.println("closing SOUTH");
-    maze.closeWall(x,y,SOUTH);
+    Serial.println("closing rear");
+    updated |= maze.closeWall(currentX,currentY,rearDirection());
   }
-};
-//
-// /*
-// NORTH->EAST
-// east -> SOUTH
-// south->WEST
-// WEST -> NORTH
-// */
-
-
-
-Position newPosition(short x,short y){
-  motors.printBoolStatus();
-
-  Position pos;
-  pos.x = x;
-  pos.y = y;
-  return pos;
+  if (updated) {
+    maze.solve(currentTarget);
+  }
+  return updated;
 };
 
-
-Position copyPosition(Position p, byte dir){
-  motors.printBoolStatus();
-
-  Position np=newPosition(p.x,p.y);
-  np.direction = dir;
-  return np;
-}
-
-boolean positionsMatch(Position a,Position b){
-  motors.printBoolStatus();
-
-  return a.x == b.x && a.y == b.y;
-}
-
-void explore(){
-  motors.printBoolStatus();
-
-  StackArray <Position> moves;
-  StackArray <Position> possibleMoves;
-  Position curPos = newPosition(0,0);
-  moves.push(curPos);
-  maze.visit(curPos.x,curPos.y);
-  boolean moved = true;
-
-  while (true) {
-    motors.printBoolStatus();
-
-    Serial.print(moved);
-    Serial.println(" looping");
-    updatemaze(curPos.x,curPos.y);
-    Serial.println("done updating maze");
-
-    if(moved){
-      Serial.println("looking at available moves");
-      //push available moves onto the stack;
-      // if(!maze.wallPresent(curPos.x,curPos.y,WEST) && !maze.visited(curPos.x-1,curPos.y)){
-      if(!motors.left && !maze.visited(curPos.x-1,curPos.y)){
-        Serial.println("canMoveWest");
-        possibleMoves.push(copyPosition(curPos,WEST));
-      }
-      // if(!maze.wallPresent(curPos.x,curPos.y,NORTH) && !maze.visited(curPos.x,curPos.y-1)){
-      if(!motors.front && !maze.visited(curPos.x,curPos.y-1)){
-        Serial.println("canMoveNORTH");
-        possibleMoves.push(copyPosition(curPos,NORTH));
-      }
-      // if(!maze.wallPresent(curPos.x,curPos.y,EAST) && !maze.visited(curPos.x+1,curPos.y)){
-      if(!motors.right && !maze.visited(curPos.x+1,curPos.y)){
-        Serial.println("canMoveEAST");
-        possibleMoves.push(copyPosition(curPos,EAST));
-      }
-      // if(!maze.wallPresent(curPos.x,curPos.y,SOUTH) && !maze.visited(curPos.x,curPos.y+1)){
-      if(!motors.back && !maze.visited(curPos.x,curPos.y+1)){
-        Serial.println("canMoveSOUTH");
-        possibleMoves.push(copyPosition(curPos,SOUTH));
-      }
-      Serial.println(" done looking at available moves");
-
-    }
-    else{
-      Serial.println("looks like we didnt move much");
-    }
-    if (positionsMatch(possibleMoves.peek(),curPos)) {
-      Serial.println("moving now");
-      Position p = possibleMoves.pop();
-      switch(p.direction){
-        case NORTH:
-          p.y--;
-          break;
-        case SOUTH:
-          p.y++;
-          break;
-        case WEST:
-          p.x--;
-          break;
-        case EAST:
-          p.x++;
-          break;
-      }
-      maze.visit(p.x,p.y);
-      moveRobot(p.direction);
-      moves.push(p);
-      curPos = p;
-      moved = true;
-    }
-    else{
-      Serial.println("didnt move");
-      curPos = moves.pop();
-      moved = false;
-    }
+void moveRobot(byte direction) {
+  setDirection(direction);
+  motors.moveForwardOne();
+  switch (direction) {
+    case NORTH:
+      currentY--;
+      break;
+    case SOUTH:
+      currentY++;
+      break;
+    case EAST:
+      currentX++;
+      break;
+    case WEST:
+      currentX--;
+      break;
   }
-}
-
-void go(){
-  motors.moveForwardOne();
-  motors.rotate90left();
-  motors.moveForwardOne();
-  motors.moveForwardOne();
-  motors.rotate90right();
-  motors.moveForwardOne();
-  motors.rotate90left();
-  motors.moveForwardOne();
-  motors.moveForwardOne();
-  motors.rotate90right();
-  motors.moveForwardOne();
-
 }
 
 void loop(){
-  go();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // motors.rotate90right();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // // motors.rotate90left();
-  // while(1);
-  // explore();
-  randomSearch();
-  motors.updateSensors();
-  // motors.printBoolStatus();
-  motors.printStatus();
-  delay(100);
+  if (explore) {
+    updatedOnThisRun |= updateMaze(); //solves the maze for the current target
+    moveRobot(maze.bestDirection(currentX, currentY));
+    if (maze.isTarget(currentX, currentY, currentTarget)) {
+      explore = updatedOnThisRun; //if we haven't gotten an update, start the speed runs
+      updatedOnThisRun = false;
+      currentTarget = (currentTarget + 1) % 2;
+    }
+  } else {
+    //"speed" runs - if you wanted to get fancy you could take the path and try to do diagonal moves
+    byte* path = maze.bestPath(currentX, currentY, currentTarget); //also solves the maze for the current target
+    while (*path != 255) {
+      moveRobot(*path);
+      path++;
+    }
+    currentTarget = (currentTarget + 1) % 2;
+  }
 }
