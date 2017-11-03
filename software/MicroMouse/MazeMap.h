@@ -37,7 +37,7 @@ class MazeMap
     boolean isTarget(int x, int y, int targetType);
     void solve(int targetType);
     void print();
-    byte[] bestPath(int startX, int startY, int targetType);
+    byte* bestPath(int startX, int startY, int targetType);
   private:
     boolean wallsNS[MAZE_SIZE][MAZE_SIZE + 1];
     boolean wallsEW[MAZE_SIZE + 1][MAZE_SIZE];

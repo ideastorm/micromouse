@@ -1,4 +1,4 @@
-#include "map.h"
+#include "MazeMap.h"
 
 MazeMap::MazeMap() {
   for (int x = 0; x < MAZE_SIZE; x++) {
@@ -108,7 +108,7 @@ void MazeMap::solve(int targetType) {
   Serial.println(message);
 }
 
-String MazeMap::bestPath(int startX, int startY, int targetType) {
+byte* MazeMap::bestPath(int startX, int startY, int targetType) {
   int x = startX;
   int y = startY;
   solve(targetType);

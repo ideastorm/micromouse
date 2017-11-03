@@ -1,4 +1,4 @@
-#include <AccelStepperInt.h>
+#include <AccelStepper.h>
 #include <MultiStepper.h>
 #include "StepperShield.h"
 #include "MazeMap.h"
