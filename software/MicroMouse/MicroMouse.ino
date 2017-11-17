@@ -72,6 +72,7 @@ boolean updateMaze(){
   }
   if (updated) {
     maze.solve(currentTarget);
+    maze.print();
   }
   return updated;
 };
@@ -97,14 +98,17 @@ void moveRobot(byte direction) {
 
 void loop(){
   if (explore) {
+    Serial.println("Exploring the maze");
     updatedOnThisRun |= updateMaze(); //solves the maze for the current target
     moveRobot(maze.bestDirection(currentX, currentY));
     if (maze.isTarget(currentX, currentY, currentTarget)) {
+      Serial.println("Reached target");
       explore = updatedOnThisRun; //if we haven't gotten an update, start the speed runs
       updatedOnThisRun = false;
       currentTarget = (currentTarget + 1) % 2;
     }
   } else {
+    Serial.println("Starting speed run");
     //"speed" runs - if you wanted to get fancy you could take the path and try to do diagonal moves
     byte* path = maze.bestPath(currentX, currentY, currentTarget); //also solves the maze for the current target
     while (*path != 255) {
